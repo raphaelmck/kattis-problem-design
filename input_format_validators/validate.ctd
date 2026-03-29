@@ -1,0 +1,18 @@
+# This is a sample input validator, written for the checktestdata validation
+# language (see:
+# https://github.com/DOMjudge/checktestdata/blob/master/doc/format-spec.md).
+
+# Please refer to the comments in README.md for a description of the syntax it
+# is validating. Then, change it as you need.
+
+INT(1,100,n) NEWLINE
+REPI(j,n)
+    REGEX("[a-z]{1,20}",s[j]) SPACE
+    INT(-100,100) SPACE
+    FLOATP(-10,10,0,3) NEWLINE
+END
+
+# verify uniqueness among all strings
+ASSERT(UNIQUE(s))
+
+EOF
