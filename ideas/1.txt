@@ -1,0 +1,287 @@
+Corridor Contracts
+
+Problem Statement
+
+A trade corridor has N freight brokers, numbered 1 through N.
+
+Broker i charges according to the formula
+
+    cost_i(x) = a_i * x + b_i
+
+for a shipment of weight x.
+
+You will receive Q customer requests. Each request gives three integers l, r, and x, and the customer may choose exactly one broker with index between l and r, inclusive.
+
+For each request, output the minimum possible cost.
+
+Input
+
+The first line contains two integers N and Q.
+
+The next N lines each contain two integers a_i and b_i, describing broker i.
+
+The next Q lines each contain three integers l, r, and x, describing a customer request.
+
+Output
+
+Output Q lines.
+
+For each request, print the minimum value of a_i * x + b_i over all i such that l <= i <= r.
+
+Constraints
+
+    1 <= N, Q <= 200000
+    0 <= a_i, b_i <= 10^9
+    0 <= x <= 10^9
+    1 <= l <= r <= N
+
+It is guaranteed that every answer fits in a signed 64-bit integer.
+
+Sample Input
+
+    5 4
+    1 10
+    3 1
+    2 7
+    5 0
+    4 2
+    1 5 2
+    2 4 3
+    3 5 1
+    4 4 100
+
+Sample Output
+
+    7
+    10
+    5
+    500
+
+Explanation
+
+For query (1, 5, 2), we compute:
+
+    broker 1: 1*2 + 10 = 12
+    broker 2: 3*2 + 1  = 7
+    broker 3: 2*2 + 7  = 11
+    broker 4: 5*2 + 0  = 10
+    broker 5: 4*2 + 2  = 10
+
+The minimum is 7.
+
+--------------------------------------------------
+Intended Solution
+--------------------------------------------------
+
+Observation
+
+Each broker defines a line
+
+    y = a_i * x + b_i
+
+Each query asks for the minimum value of these lines at a given x, but only among brokers whose indices lie in [l, r].
+
+So the task is:
+
+    range minimum query over lines evaluated at x
+
+This suggests combining:
+
+    1. a segment tree over broker indices
+    2. a convex hull trick structure at each node
+
+Main Idea
+
+Build a segment tree over the array of brokers.
+
+Each node represents some interval of broker indices.
+For that interval, store the lower hull of all lines belonging to the brokers in that interval.
+
+Then to answer a query (l, r, x):
+
+    - decompose [l, r] into O(log N) segment tree nodes
+    - query each node's hull for the minimum value at x
+    - take the minimum over all those nodes
+
+How the Segment Tree is Built
+
+Leaf Nodes
+
+Each leaf corresponds to one broker.
+If broker i has line
+
+    y = a_i * x + b_i
+
+then the leaf for i stores that single line.
+
+Internal Nodes
+
+An internal node covering interval [L, R] has two children:
+
+    left child  covering [L, M]
+    right child covering [M+1, R]
+
+The node stores the lower hull of all lines from both children.
+
+So the build process is:
+
+    build(left child)
+    build(right child)
+    merge the two sets of lines
+    rebuild the lower hull
+    store it at the current node
+
+Important Fact
+
+It is enough to merge the hull lines of the two children, instead of all original lines.
+
+Why?
+
+If a line was removed from a child's hull, then it was already never optimal in that child interval.
+Adding even more lines cannot make it become useful again for the union.
+So only child hull lines matter.
+
+How to Build a Lower Hull
+
+Suppose we have several lines of the form
+
+    y = m*x + c
+
+To build a static lower hull:
+
+1. Sort lines by slope m.
+2. If several lines have the same slope, keep only the one with the smallest intercept c.
+3. Process lines in sorted order and maintain a stack/vector of useful lines.
+4. When adding a new line makes the previous line useless, remove the previous line.
+
+This is standard convex hull trick construction.
+
+A line l2 becomes useless between l1 and l3 if the intersection of (l1, l2) occurs to the right of or at the same point as the intersection of (l2, l3).
+
+This can be checked with cross multiplication to avoid floating point errors.
+
+How Queries Work
+
+For a query (l, r, x):
+
+1. Use the segment tree to split [l, r] into O(log N) disjoint nodes.
+2. For each node, find the minimum value among the lines in that node's hull at x.
+3. Return the smallest value obtained.
+
+If each hull supports binary search, then querying one hull takes O(log N).
+Since there are O(log N) segment tree nodes, each query takes O(log^2 N).
+
+Data Stored at Each Node
+
+Each node stores a vector of lines forming the lower hull, sorted by slope.
+
+There are two common ways to query a hull:
+
+Method 1:
+    Store just the hull lines and binary search using comparisons of neighboring lines.
+
+Method 2:
+    Store hull lines plus the x-coordinate from which each line becomes optimal.
+    Then query by binary searching these breakpoints.
+
+Either is fine.
+
+Complexity
+
+Let H be the total number of stored hull lines across the segment tree.
+
+Build:
+    O(N log N)
+
+Query:
+    O(log^2 N)
+
+Memory:
+    O(N log N)
+
+This is fast enough for N, Q <= 200000.
+
+--------------------------------------------------
+Example of the Build
+--------------------------------------------------
+
+Suppose the brokers are:
+
+    1: y = 2x + 3
+    2: y = 5x + 1
+    3: y = x + 10
+    4: y = 3x + 0
+
+Leaves:
+
+    [1,1] stores {2x + 3}
+    [2,2] stores {5x + 1}
+    [3,3] stores {x + 10}
+    [4,4] stores {3x + 0}
+
+Then:
+
+    [1,2] stores hull of {2x + 3, 5x + 1}
+    [3,4] stores hull of {x + 10, 3x + 0}
+
+Then:
+
+    [1,4] stores hull of {2x + 3, 5x + 1, x + 10, 3x + 0}
+
+If we query (2, 4, 2), then the range [2,4] decomposes into:
+
+    [2,2] and [3,4]
+
+Evaluate:
+
+    broker 2: 5*2 + 1 = 11
+    broker 3: 1*2 + 10 = 12
+    broker 4: 3*2 + 0 = 6
+
+Answer:
+
+    6
+
+--------------------------------------------------
+Pseudocode
+--------------------------------------------------
+
+build(node, L, R):
+    if L == R:
+        hull[node] = { line of broker L }
+        return
+
+    M = (L + R) / 2
+    build(left child, L, M)
+    build(right child, M+1, R)
+
+    all_lines = merge(hull[left child], hull[right child])
+    sort all_lines by slope, then intercept
+    remove duplicate slopes keeping smallest intercept
+    hull[node] = make_lower_hull(all_lines)
+
+query(node, L, R, ql, qr, x):
+    if [L, R] is completely outside [ql, qr]:
+        return +infinity
+
+    if [L, R] is completely inside [ql, qr]:
+        return query_hull(hull[node], x)
+
+    M = (L + R) / 2
+    return min(
+        query(left child, L, M, ql, qr, x),
+        query(right child, M+1, R, ql, qr, x)
+    )
+
+--------------------------------------------------
+Good Test Cases
+--------------------------------------------------
+
+1. Many brokers with the same slope but different intercepts
+2. Strictly increasing slopes
+3. Strictly decreasing slopes
+4. Queries where l = r
+5. Queries covering the entire array
+6. x = 0
+7. Very large x
+8. Cases where answers are close to 64-bit limits
