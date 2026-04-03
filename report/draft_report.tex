@@ -87,13 +87,17 @@ This gives an optimal substructure: every optimal full schedule consists of an o
 Thus the recurrence explores exactly all feasible orders of alarm handling, while pruning dominated states by keeping only the earliest completion time for each $(\text{mask},i)$.
 
 \subsection*{Complexity}
-Let $K$ be the number of alarmed rooms.
+
 \begin{itemize}
-    \item Tree preprocessing with DFS/BFS + LCA: $O(N\log N)$
-    \item Pairwise distances between important rooms: $O(K^2\log N)$, or $O(K^2)$ after preprocessing with $O(1)$ LCA queries
-    \item Dynamic programming: $O(2^K K^2)$
+    \item Tree preprocessing with DFS and LCA preprocessing: $O(N\log N)$
+    \item Pairwise distances between the $K+1$ important rooms:
+    \begin{itemize}
+        \item $O(K^2\log N)$ with binary lifting
+        \item $O(K^2)$ with Euler tour + RMQ and $O(1)$ LCA queries
+    \end{itemize}
+    \item Dynamic programming: $O(2^K K^2)$, since there are $O(2^K K)$ dp states, one for each pair $(\texttt{mask}, i)$, and each state tries up to $K$ possible next alarms.
 \end{itemize}
-This is feasible for $K \le 18$.
+This is feasible for $N \le 200\,000$ and $K \le 18$.
 
 \subsection*{Any intended problem pitfalls or incorrect approaches}
 A few natural wrong ideas:
@@ -103,26 +107,25 @@ A few natural wrong ideas:
     
     \item \textbf{Greedy by earliest deadline.} Likewise, always going to the smallest deadline first can fail because the travel time between rooms matters. The order must balance both current position and remaining deadlines.
     
+    \item \textbf{Inefficient Distance Computation} An inefficient approach is to recompute path lengths from scratch. Because the graph is a tree, we can preprocess distances once and only query the start room and alarmed rooms needed by the dynamic programming.
+
     \item \textbf{Treating it as ordinary shortest path.} This is not a plain shortest path problem because the guard must choose an order over multiple required targets, and deadlines constrain which permutations are feasible.
-    
-    \item \textbf{Running all-pairs shortest paths on the entire tree.} That would be unnecessary and too expensive for large $N$. The graph is a tree, so distances should be obtained using tree preprocessing, not Floyd--Warshall or repeated Dijkstra.
-    
-    \item \textbf{Checking deadline at arrival instead of completion.} The statement says the alarm is handled only after spending $a_i$ time opening the panel. So the deadline applies to finishing the action, not merely reaching the room.
+        
+    \item \textbf{Checking deadline at arrival instead of completion.} The statement says the alarm is handled only after spending $a_i$ time opening the panel, so the deadline applies to finishing the action, not just reaching the room. This can easily be mishandled during implementation.
 \end{enumerate}
 
 \subsection*{Any particular design choices}
+
 \begin{enumerate}
-    \item \textbf{Tree structure with small $K$.} The large tree keeps the problem visually interesting and prevents trivial dense-graph solutions, while the small number of alarmed rooms keeps the intended dynamic programming manageable and contest-appropriate.
+    \item \textbf{Tree structure with small $K$.} Using a tree allows large input sizes while keeping distance queries structured, and the small number of alarmed rooms makes the subset dynamic programming feasible.
     
     \item \textbf{Weighted edges.} Weighted corridors make the problem less like a simple BFS ordering problem and force contestants to reason about true travel time.
     
-    \item \textbf{Start room may be alarmed.} This is a good edge case and makes the statement slightly richer without adding complexity.
+    \item \textbf{Start room may be alarmed.} This could be a good edge case depending on implementation.
     
     \item \textbf{Finish anywhere.} The guard does not need to return to the start. This makes the optimization cleaner and avoids adding a redundant final leg.
-    
-    \item \textbf{Distinct alarmed rooms.} This removes ambiguity in the input and makes the dynamic programming state definition simpler.
-    
-    \item \textbf{Readability.} The statement is intentionally compact: tree, start room, alarm rooms with open times and deadlines, minimum finish time or impossible. The algorithmic core then becomes easy to explain.
+        
+    \item \textbf{Readability.} The statement is intentionally compact: tree, start room, alarm rooms with opening times and deadlines, and minimum finish time or impossible. The goal was to keep the setup easy to follow.
 \end{enumerate}
 
 \subsection*{Descriptions of planned test cases needed to verify correctness and efficiency}
@@ -134,8 +137,9 @@ We would include both hand-crafted and generated tests.
     \item Single alarm, feasible: direct travel plus handling fits deadline.
     \item Single alarm, impossible: deadline missed even if visited first.
     \item Start room is alarmed: handling can begin immediately with travel time $0$.
+    \item Alarmed room is entered but skipped: alarmed room may have to be entered but skipped to fit within deadline.
     \item Exact deadline equality: finish time exactly equals deadline, verifying $\le$ instead of $<$.
-    \item Chain-shaped tree: tests long unique routes.
+    \item Chain-shaped tree: tests long similar routes.
     \item Star-shaped tree: all alarms branch from a center, good for exposing greedy mistakes.
     \item Balanced binary tree: structured but nontrivial distances.
     \item Must revisit shared ancestors: alarms in different branches, ensuring solutions correctly use tree distances through LCA structure.
@@ -146,9 +150,10 @@ We would include both hand-crafted and generated tests.
 
 \paragraph{Performance and stress tests.}
 \begin{itemize}
-    \item Large random tree, small $K$: large $N$, random weighted edges, moderate deadlines.
-    \item Maximum $K$: $K=18$, distances arranged so many dynamic programming states are reachable.
-    \item Large irrelevant tree: very large $N$ but alarms concentrated in a small region, checking preprocessing overhead and robustness.
+    \item Large chain-shaped tree: tests tree distance calculation performance.
+    \item Large star-shaped tree: also tests tree distance calculation performance.
+    \item Large balanced binary tree: tests tree distance calculation performance once again.
+    \item Maximum $K$ and $N$: large distances arranged so many dynamic programming states are reachable.
     \item Large path lengths: weights large enough to require 64-bit arithmetic.
 \end{itemize}
 
@@ -156,13 +161,11 @@ We would include both hand-crafted and generated tests.
 We would generate tests in several ways:
 
 \begin{enumerate}
-    \item \textbf{Manual examples.} Small examples written by hand for sample cases, deadline edge cases, greedy-failure constructions, and the start-room-alarmed case.
+    \item \textbf{Manual examples.} Small examples written by hand for sample cases, deadline edge cases, greedy-failure constructions, the start-room-alarmed case, etc.
     
-    \item \textbf{Structured generators.} We would write generators for chains, stars, balanced binary trees, broom trees (a long path with many leaves at one end), and random trees via Pr\"ufer sequences.
+    \item \textbf{Structured generators.} We would write generators for chains, stars, balanced binary trees, and random trees.
     
     \item \textbf{Deadline generation.} For each generated instance, choose an intended visiting order and compute its exact finish times, then create several variants: deadlines comfortably above finish times, deadlines exactly equal to finish times, deadlines lower by $1$ on one room to create near-failure, and mixed loose and tight deadlines.
-    
-    \item \textbf{Brute-force validator for small cases.} For small $N$ and small $K$, for example $K \le 8$, generate random instances and compare the intended solution against a brute-force checker that tries all $K!$ alarm orders. This is especially useful for validating the dynamic programming implementation and catching off-by-one deadline mistakes.
 \end{enumerate}
 
 \subsection*{An argument for why those test cases are sufficient}
@@ -184,10 +187,8 @@ For efficiency, they cover:
     \item very large trees,
     \item maximum number of alarms,
     \item large edge weights,
-    \item random and adversarial structures.
+    \item random structures.
 \end{itemize}
-
-The brute-force cross-check on small random cases provides strong evidence that the recurrence and transitions are correct, while the larger structured cases verify that the implementation scales to the intended constraints.
 
 Taken together, these tests exercise every key aspect of the problem:
 \begin{itemize}
