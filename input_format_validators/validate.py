@@ -7,7 +7,7 @@ def read_line():
     assert line != ''
     return line
 
-def parse_int_token(tok: str) -> int:
+def parse_int_token(tok):
     # Strict integer format: no leading zeros except for "0"
     if tok == "0":
         return 0
@@ -22,7 +22,7 @@ def parse_int_token(tok: str) -> int:
         assert tok.isdigit()
         return int(tok)
 
-def parse_fixed_k_ints_line(k: int):
+def parse_fixed_k_ints_line(k):
     line = read_line()
     assert line.endswith("\n")
     parts = line[:-1].split(" ")
