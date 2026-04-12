@@ -230,9 +230,10 @@ small $K$), but will TLE on any test with $K\ge12$ or so.
 
   \item[\texttt{secret10\_k18\_star\_dense\_states}]
         $N=19$, $K=18$, star tree.  Every alarm is on a distinct leaf;
-        deadlines are very tight.  Exercises the maximum number of DP states
-        ($2^{18}\times18$) and large edge weights (up to $10^{15}$).
-        Tests overflow and DP completeness.
+        deadlines are very loose ($10^{15}$), so all $2^{18}\times18$ DP
+        states are reachable.  Deadline values up to $10^{15}$ test
+        64-bit arithmetic.  Answer is the minimum over all $18!$ valid
+        orderings.
 
   \item[\texttt{secret11\_large\_chain\_stress}]
         $N=10\,000$, $K=18$, chain tree.  Long travel distances; tests that
@@ -245,7 +246,7 @@ small $K$), but will TLE on any test with $K\ge12$ or so.
         star-shaped input.
 
   \item[\texttt{secret13\_large\_binary\_stress}]
-        $N\approx130\,000$, $K=18$, balanced binary tree.  Structured but
+        $N=200\,000$, $K=18$, balanced binary tree.  Structured but
         nontrivial distances; tests LCA / distance computation at scale.
 
   \item[\texttt{secret14\_medium\_random\_feasible}]
