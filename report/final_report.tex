@@ -1,0 +1,303 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{fancyvrb}
+\usepackage{parskip}
+\usepackage{tikz}
+
+\title{Museum Guard Shift -- Final Report}
+\author{Group Members: Dmitri Lvovich, Raphaël Michnik}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section*{Problem Summary}
+
+A guard starts at room $S$ in a museum whose rooms form a weighted tree.
+Exactly $K$ rooms contain alarms.  Each alarm $i$ is in room $r_i$; handling it
+takes $a_i$ time after arrival, and must be completed by deadline $d_i$.
+The guard must handle \emph{all} alarms and minimize the total time to do so,
+or report \texttt{IMPOSSIBLE}.
+
+\section*{Intended Solution}
+
+The intended solution has two phases.
+
+\subsection*{Phase 1: Distance Preprocessing}
+
+Because the graph is a weighted tree, the shortest-path distance between any
+two nodes $u$ and $v$ equals
+\[
+  \mathrm{dist}(u,v)
+  = \mathrm{distRoot}[u] + \mathrm{distRoot}[v]
+    - 2\cdot\mathrm{distRoot}[\mathrm{LCA}(u,v)],
+\]
+where $\mathrm{distRoot}[\cdot]$ stores weighted distances from the chosen root,
+and $\mathrm{LCA}$ is the lowest common ancestor.  We root the tree at $S$,
+compute root-distances in $O(N)$ via DFS, and build an LCA structure in
+$O(N\log N)$ (or $O(N)$ with the Farach-Colton--Bender RMQ trick).
+This lets us answer each pairwise distance query among the $K+1$ important
+nodes in $O(\log N)$ or $O(1)$, giving an $O(K^2\log N)$ or $O(K^2)$
+pre\-computation.
+
+\subsection*{Phase 2: Bitmask Dynamic Programming}
+
+Let
+\[
+  dp[\text{mask}][i]
+\]
+be the earliest time the guard can finish handling all alarms in \texttt{mask}
+while ending at alarm $i$.
+
+\paragraph{Initialization.}
+\[
+  dp[1\ll i][i] = \mathrm{dist}(S,\,r_i) + a_i
+  \quad\text{if } \mathrm{dist}(S,\,r_i)+a_i \le d_i.
+\]
+
+\paragraph{Transition.}
+For each state $(\text{mask},\,i)$ with $dp[\text{mask}][i]<\infty$
+and each unvisited alarm $j\notin\text{mask}$:
+\[
+  \text{new\_time} = dp[\text{mask}][i] + \mathrm{dist}(r_i,\,r_j) + a_j.
+\]
+If $\text{new\_time}\le d_j$, update
+$dp[\text{mask}\cup\{j\}][j] = \min(\cdots,\,\text{new\_time})$.
+
+\paragraph{Answer.}
+$\min_i\;dp[(1\ll K)-1][i]$, or \texttt{IMPOSSIBLE} if all are $\infty$.
+
+\paragraph{Correctness.}
+Optimal substructure holds: any optimal full schedule consists of an
+optimal partial schedule for some subset, plus one valid transition.
+The DP keeps only the earliest finish time for each $(\text{mask},i)$ pair,
+dominating every slower path to the same state.
+
+\paragraph{Complexity.}
+$O(2^K K^2)$ for the DP, plus $O(N\log N + K^2)$ for preprocessing.
+Feasible for $N\le 200\,000$ and $K\le 18$ (the DP table has $2^{18}\times 18
+\approx 4.7\times 10^6$ entries, each with up to $18$ transitions).
+
+\section*{Incorrect and Inefficient Solutions}
+
+\subsection*{Wrong Answer: Greedy by Earliest Deadline}
+
+File: \texttt{submissions/wrong\_answer/cppwrong.cpp}
+
+This solution sorts alarms by deadline (smallest first) and visits them
+greedily in that order, using LCA-based distances.  It fails because it
+ignores the guard's current position: choosing the earliest-deadline alarm
+can send the guard far away, making a second tight-deadline alarm unreachable
+even when a valid ordering exists.
+
+\textbf{Failing case:} \texttt{secret07\_deadline\_greedy\_trap.in} ---
+the greedy outputs \texttt{IMPOSSIBLE} while the correct answer is $6$.
+The tree is a 3-node chain $1\text{--}2\text{--}3$; alarm~2 (in room~2) has
+deadline~7 and alarm~3 (in room~3) has deadline~6.  The greedy visits room~3
+first (lower deadline), traveling~4 then spending~1, finishing at~5.  It then
+travels back to room~2 (distance~2), finishing at~8$>7$.  The optimal order
+visits room~2 first: finish at $2+1=3\le7$, then room~3: finish at $3+2+1=6\le6$.
+
+\subsection*{Time Limit Exceeded: Brute-Force Permutation Search}
+
+File: \texttt{submissions/time\_limit\_exceeded/cpptle.cpp}
+
+This solution correctly precomputes all pairwise distances with BFS, but
+instead of DP it tests every one of the $K!$ permutations of alarm visits.
+For $K=18$, this is $18!\approx6.4\times10^{15}$ iterations --- completely
+infeasible within any reasonable time limit.  The solution is correct on
+small inputs (it agrees with the accepted solutions on all test cases with
+small $K$), but will TLE on any test with $K\ge12$ or so.
+
+\section*{Probable Errors Contestants Could Make}
+
+\begin{enumerate}
+  \item \textbf{Greedy by nearest room.}  Choosing the closest unhandled alarm
+        can fail: a slightly farther alarm may have a much tighter deadline.
+
+  \item \textbf{Greedy by earliest deadline.}  Travel time is not uniform, so
+        the classic EDF scheduling rule does not apply here.
+
+  \item \textbf{Recomputing distances naively.}  Running BFS/DFS for every
+        alarm pair from scratch is $O(KN)$ per pair, and $O(K^2 N)$ total.
+        For $N=200\,000$ and $K=18$ that is $\approx 6.5\times10^{10}$
+        operations --- TLE.
+
+  \item \textbf{Treating it as ordinary shortest path.}  The guard must visit
+        all $K$ alarms in \emph{some} order respecting deadlines; this is not
+        a single-source shortest-path instance.
+
+  \item \textbf{Checking the deadline at arrival, not at completion.}
+        The problem states that the alarm is handled only after spending $a_i$
+        time at the panel.  A common off-by-one is to check
+        $\mathrm{arrival\_time}\le d_i$ rather than
+        $\mathrm{arrival\_time}+a_i\le d_i$.
+
+  \item \textbf{Integer overflow.}  Edge weights up to $10^9$, paths up to
+        $N-1$ edges long, plus handling times up to $10^9$: distances can
+        exceed $2\times10^{17}$, requiring 64-bit integers throughout.
+\end{enumerate}
+
+\section*{Design Choices}
+
+\begin{enumerate}
+  \item \textbf{Tree structure with small $K$.}  The tree provides a clean
+        distance model while keeping input sizes large.  Small $K$ makes the
+        bitmask DP the natural intended solution, without any polynomial
+        alternative.
+
+  \item \textbf{Weighted edges.}  Uniform weights would allow BFS-like greedy
+        reasoning; weights force competitors to use actual travel times.
+
+  \item \textbf{Start room may be alarmed.}  Handled naturally by the DP
+        ($\mathrm{dist}(S,r_i)=0$ when $r_i=S$); tested in
+        \texttt{secret04\_start\_room\_alarmed}.
+
+  \item \textbf{Guard need not return to start.}  Adding a return leg would
+        add complexity without algorithmic depth; omitted for clarity.
+
+  \item \textbf{Deadlines can be large ($\le10^{15}$).}  Forces 64-bit
+        arithmetic and tests that implementations do not overflow.
+\end{enumerate}
+
+\section*{Test Cases}
+
+\subsection*{Sample Cases (2 files)}
+
+\begin{description}
+  \item[\texttt{sample01}] A 6-node tree, $K=3$ alarms, start at room 1.
+        All deadlines are comfortably met by one specific visiting order
+        (rooms $4\to6\to5$); answer is $26$.
+        Tests basic correctness and the sample explanation.
+
+  \item[\texttt{sample02}] Same tree and alarms, but room 4's deadline is
+        reduced from 6 to 4.  Since the earliest possible finish time for
+        room~4 is $4+1=5>4$, the answer is \texttt{IMPOSSIBLE}.
+        Tests the impossible case.
+\end{description}
+
+\subsection*{Secret Cases (15 files)}
+
+\begin{description}
+  \item[\texttt{secret01\_no\_alarms}]
+        $K=0$; output must be $0$.
+        Tests the degenerate base case that some solutions may not handle.
+
+  \item[\texttt{secret02\_single\_exact}]
+        $K=1$; deadline equals the exact arrival-plus-handling time.
+        Tests the $\le$ boundary condition (equal is feasible).
+
+  \item[\texttt{secret03\_single\_impossible}]
+        $K=1$; deadline is one unit below the minimum finish time.
+        Tests the $\le$ boundary condition (over by one is impossible).
+
+  \item[\texttt{secret04\_start\_room\_alarmed}]
+        The starting room is one of the alarmed rooms (travel distance $=0$).
+        Tests implementations that compute $\mathrm{dist}(S,r_i)$ for the
+        starting-room alarm.
+
+  \item[\texttt{secret05\_chain\_equalities}]
+        Chain tree; all deadlines are exactly tight.
+        Tests that the DP uses $\le$ rather than $<$, on a non-trivial path.
+
+  \item[\texttt{secret06\_nearest\_greedy\_trap}]
+        3-node star; the nearest alarm has a loose deadline, but the farther
+        one has a tight deadline that is missed if the near alarm is visited
+        first.  Catches ``visit nearest first'' greedy approaches.
+
+  \item[\texttt{secret07\_deadline\_greedy\_trap}]
+        3-node chain; visiting the alarm with the smallest deadline first
+        makes the other alarm impossible.  The correct order is reversed.
+        Catches EDF (earliest-deadline-first) greedy approaches.
+
+  \item[\texttt{secret08\_shared\_ancestors}]
+        Two alarms in different subtrees; the path must go through their LCA.
+        Tests correct use of tree distances.
+
+  \item[\texttt{secret09\_individually\_reachable\_but\_impossible}]
+        Each alarm is reachable individually from $S$ within its deadline, but
+        no ordering visits both within their deadlines.
+        Tests that the DP correctly identifies infeasibility despite individual
+        feasibility.
+
+  \item[\texttt{secret10\_k18\_star\_dense\_states}]
+        $N=19$, $K=18$, star tree.  Every alarm is on a distinct leaf;
+        deadlines are very tight.  Exercises the maximum number of DP states
+        ($2^{18}\times18$) and large edge weights (up to $10^{15}$).
+        Tests overflow and DP completeness.
+
+  \item[\texttt{secret11\_large\_chain\_stress}]
+        $N=10\,000$, $K=18$, chain tree.  Long travel distances; tests that
+        tree-distance computation scales to large $N$ and forces 64-bit
+        arithmetic.
+
+  \item[\texttt{secret12\_large\_star\_stress}]
+        $N=200\,000$, $K=18$, star tree.  Maximum $N$ with all alarms on
+        leaves of a single hub.  Tests memory and time on the largest
+        star-shaped input.
+
+  \item[\texttt{secret13\_large\_binary\_stress}]
+        $N\approx130\,000$, $K=18$, balanced binary tree.  Structured but
+        nontrivial distances; tests LCA / distance computation at scale.
+
+  \item[\texttt{secret14\_medium\_random\_feasible}]
+        $N=5\,000$, $K=18$, random tree, feasible answer.
+        Random structure reduces the chance of accidentally correct greedy
+        solutions.
+
+  \item[\texttt{secret15\_medium\_random\_mixed\_tight}]
+        $N=5\,000$, $K=18$, random tree, impossible answer.
+        Mixed tight and loose deadlines; tests that the DP correctly returns
+        \texttt{IMPOSSIBLE} on a realistic random instance.
+\end{description}
+
+\subsection*{Why These Tests Are Sufficient}
+
+The test suite covers:
+\begin{itemize}
+  \item \textbf{Trivial and edge cases:} $K=0$, $K=1$, start room alarmed,
+        exact deadline equality.
+  \item \textbf{Correctness under greediness:} two dedicated greedy-trap
+        cases catch the two most natural wrong approaches.
+  \item \textbf{Feasibility vs.\ infeasibility:} multiple cases of each,
+        including one where individual reachability does not imply joint
+        feasibility.
+  \item \textbf{Tree shapes:} chain, star, balanced binary, random -- each
+        stresses distance computation differently.
+  \item \textbf{Scale:} $N$ up to $200\,000$ and $K=18$ in separate cases,
+        together confirming that both the DP and the tree preprocessing run
+        within the time limit.
+  \item \textbf{64-bit arithmetic:} large edge weights ($\le10^9$) and large
+        deadlines ($\le10^{15}$) appear throughout.
+\end{itemize}
+
+\section*{Test Case Generation Strategy}
+
+Test cases were produced by a combination of manual construction and the Python
+generator in \texttt{test\_case\_generator/gen.py}.
+
+\begin{enumerate}
+  \item \textbf{Manual construction} (samples, edge/greedy-trap cases):
+        we hand-chose small trees and alarm parameters to make the desired
+        property as transparent as possible.
+
+  \item \textbf{Structured generators} (chain, star, binary, random):
+        \texttt{gen.py} produces trees of the desired shape, then picks $K$
+        alarm rooms uniformly at random.  A random visiting order is simulated
+        to compute exact finish times, and deadlines are set to the finish time
+        (tight) or finish time plus a random slack (loose).
+
+  \item \textbf{Answer verification:} all \texttt{.ans} files were produced
+        by running both accepted solutions (LCA-based and BFS-based) and
+        confirming they agree on every test case.
+\end{enumerate}
+
+\end{document}
