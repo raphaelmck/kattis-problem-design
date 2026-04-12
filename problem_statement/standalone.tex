@@ -1,0 +1,24 @@
+% Standalone wrapper for local viewing. Problemtools uses problem.en.tex directly.
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{fancyvrb}
+\usepackage{hyperref}
+
+% Kattis macro used in problem.en.tex
+\newcommand{\problemname}[1]{\begin{center}\Large\textbf{#1}\end{center}\vspace{0.5em}}
+
+\newcommand{\sampleinput}[1]{\subsection*{Sample Input #1}\VerbatimInput{../data/sample/sample0#1.in}}
+\newcommand{\sampleoutput}[1]{\subsection*{Sample Output #1}\VerbatimInput{../data/sample/sample0#1.ans}}
+
+\begin{document}
+\input{problem.en}
+
+\sampleinput{1}
+\sampleoutput{1}
+
+\sampleinput{2}
+\sampleoutput{2}
+\end{document}

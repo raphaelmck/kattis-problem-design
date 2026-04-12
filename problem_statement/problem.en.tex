@@ -1,25 +1,4 @@
-\documentclass[11pt]{article}
-\usepackage{amsmath, amssymb}
-\usepackage{hyperref}
-\usepackage{graphicx}
-\usepackage{tikz}
-
-% Define \problemname and \illustration if not using Kattis template
-\newcommand{\problemname}[1]{\section*{#1}}
-\newcommand{\illustration}[3]{%
-    \begin{figure}[h]
-        \centering
-        \includegraphics[width=#1\textwidth]{#2}
-        \caption{#3}
-    \end{figure}
-}
-
-\begin{document}
-
 \problemname{Museum Guard Shift}
-
-% Example use of the \illustration command
-% \illustration{0.3}{filename.jpg}{Photo by \href{url_here}{link text here, e.g. author name}}
 
 A museum has $N$ rooms connected by corridors. The corridors form a tree, so there is exactly one simple path between any two rooms.
 
@@ -43,54 +22,13 @@ The next $K$ lines each contain three integers $r_i$, $a_i$, and $d_i$, meaning 
 
 Print a single line containing either the minimum total time required to handle all alarms, or \texttt{IMPOSSIBLE} if no valid schedule exists.
 
-\newpage
+\subsection*{Sample tree}
 
-\subsection*{Sample tree visualization}
-
-Both sample inputs use the same tree. Only the alarm deadlines differ.
+Both sample inputs share the tree below (blue node = start room, red nodes = alarmed rooms).
 
 \begin{center}
-\begin{tikzpicture}[
-    every node/.style={circle, draw, minimum size=9mm, inner sep=1pt},
-    level distance=15mm,
-    x=1cm,
-    y=1cm,
-    font=\small
-]
-    \node[fill=blue!12] (1) at (0, 0) {1}
-        node[draw=none, fill=none, below=11mm] {};
-    \node (2) at (-2.2, -1.7) {2};
-    \node (3) at (2.2, -1.7) {3};
-    \node[fill=red!12] (4) at (-3.3, -3.4) {4};
-    \node[fill=red!12] (5) at (-1.1, -3.4) {5};
-    \node[fill=red!12] (6) at (2.2, -3.4) {6};
-
-    \draw (1) -- node[midway, above left, draw=none, fill=none] {$2$} (2);
-    \draw (1) -- node[midway, above right, draw=none, fill=none] {$3$} (3);
-    \draw (2) -- node[midway, above left, draw=none, fill=none] {$2$} (4);
-    \draw (2) -- node[midway, above right, draw=none, fill=none] {$4$} (5);
-    \draw (3) -- node[midway, right, draw=none, fill=none] {$1$} (6);
-\end{tikzpicture}
+\includegraphics[width=0.45\textwidth]{tree_diagram}
 \end{center}
-
-\subsection*{Sample input 1}
-\begin{verbatim}
-6 3 1
-1 2 2
-1 3 3
-2 4 2
-2 5 4
-3 6 1
-4 1 6
-6 2 20
-5 1 30
-\end{verbatim}
-
-\subsection*{Sample output 1}
-
-\begin{verbatim}
-26
-\end{verbatim}
 
 \subsection*{Explanation of sample 1}
 One optimal order is:
@@ -101,29 +39,5 @@ One optimal order is:
 \end{itemize}
 All deadlines are met, so the answer is $26$.
 
-\newpage
-
-\subsection*{Sample input 2}
-
-\begin{verbatim}
-6 3 1
-1 2 2
-1 3 3
-2 4 2
-2 5 4
-3 6 1
-4 1 4
-6 2 20
-5 1 30
-\end{verbatim}
-
-\subsection*{Sample output 2}
-
-\begin{verbatim}
-IMPOSSIBLE
-\end{verbatim}
-
 \subsection*{Explanation of sample 2}
 The earliest possible time to finish room $4$ is $5$, but its deadline is $4$, so no valid route exists.
-
-\end{document}

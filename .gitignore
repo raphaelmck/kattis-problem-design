@@ -9,3 +9,6 @@
 *.toc
 *.lof
 *.lot
+
+report/out/
+problem_statement/out/
