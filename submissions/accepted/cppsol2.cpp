@@ -12,8 +12,8 @@ struct Edge {
 
 /*
   =====================================================
-  Multi-Source BFS for Tree Distances
-  Optimized for small subsets of nodes (K <= 18)
+  Single-Source BFS for Tree Distances
+  Called once from S and once per alarm room (K+1 times total)
   =====================================================
 */
 

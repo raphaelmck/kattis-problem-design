@@ -2,7 +2,9 @@
 This is an incorrect greedy solution.
 
 It sorts the alarms by increasing deadline and handles them in that order.
-It is wrong because it ignores travel times between rooms.
+It is wrong because it ignores the guard's current position when choosing
+the next alarm: the fixed deadline-sorted order does not account for how
+travel costs interact with the chosen sequence.
 
 Handling the earliest-deadline alarm first can move the guard far away
 from another alarm with a tight deadline, making it impossible to complete,
