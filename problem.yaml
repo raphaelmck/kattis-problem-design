@@ -1,9 +1,4 @@
-name:
-  en: Museum Guard Shift
+name: Museum Guard Shift
 source: COMP-595 Winter 2026, McGill University
-author: Raphaël Michnik, Dmitri Lvovich
-rights-owner: Raphaël Michnik, Dmitri Lvovich
+author: Raphael Michnik, Dmitri Lvovich
 license: unknown
-limits:
-  time: 5
-  memory: 256
